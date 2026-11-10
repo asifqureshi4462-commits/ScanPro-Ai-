@@ -1,1 +1,55 @@
+name: Build Android APK
 
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Android SDK (Platform 36)
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36'
+
+      - name: Setup Gradle 9.3.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Prepare Project and Environment
+        run: |
+          if [ ! -f "settings.gradle.kts" ] && [ -d "ScanProAi-main" ]; then
+            echo "Moving files from ScanProAi-main to root..."
+            shopt -s dotglob
+            mv ScanProAi-main/* .
+          fi
+
+          mkdir -p app/schemas
+
+          echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env
+          echo "GEMINI_API_KEY=AIzaSyFakeKeyForCiBuildTestingOnly12345" > .env.example
+
+      - name: Build Debug APK
+        run: gradle assembleDebug -x lint -x test --no-daemon
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScanProAI-Debug-APK
+          path: '**/build/outputs/apk/debug/*.apk'
+          retention-days: 7
